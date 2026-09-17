@@ -7,7 +7,7 @@ Gigi:   this one looks nice https://www.airbnb.com/rooms/12345
 bot:    🏠 Filed under Stays · Sunny Hanok Stay · airbnb.com
         [I’m in]  Wrong kind? [Food] [Cafe] [Sight] [Shop] [Night]
 
-Nadia:  we should try Gwangjang Market!! the mung bean pancakes
+Akiha:  we should try Gwangjang Market!! the mung bean pancakes
 bot:    🍽 Filed under Ideas › Food · Gwangjang Market
         [I’m in] …
 
@@ -15,13 +15,13 @@ Akiha:  廣藏市場行きたい！
 bot:    ✓ Akiha is in · Gwangjang Market · 2 votes
 
 Gigi:   paid 45000 for dinner at Mangwon
-bot:    💸 45,000 KRW · dinner at Mangwon · paid by Gigi · split 5 ways
+bot:    💸 45,000 KRW · dinner at Mangwon · paid by Gigi · split 4 ways
 
 Amber:  10/18 下午兩點景福宮，5號出口集合
 bot:    📅 Sun, Oct 18 · 14:00 · Gyeongbokgung Palace · meet at exit 5
 
 Gigi:   booked my flight!! arriving sat morning
-bot:    ✓ Book flights · Gigi done · still waiting on Nadia
+bot:    ✓ Book flights · Gigi done · still waiting on Akiha
 
 Amber:  remind everyone to buy a T-money card by Oct 10
 bot:    📋 Added · Buy a T-money card · Oct 10 · everyone
@@ -31,8 +31,7 @@ bot:    (nothing — it stays out of the conversation)
 
 bot:    (18:00 Bangkok, three days before a deadline, unprompted)
         📋 3 days left
-        ✈️ Book flights (Sep 21) — Gigi, Nadia.
-        🛂 Korea tourist visa (Sep 21) — Nadia.
+        ✈️ Book flights (Sep 21) — Gigi, Akiha.
         Say “done” in here or tick it on the page → https://…/korea/
 ```
 
@@ -44,11 +43,11 @@ bot:    (18:00 Bangkok, three days before a deadline, unprompted)
 | Is an image | Claude Haiku 4.5 looks at it: a shop / map / listing / review screenshot becomes an idea (or stay, or a vote if it's already listed); selfies, memes and chat screenshots are ignored. |
 | No link | Claude Haiku 4.5 classifies it as expense / idea / itinerary / vote / bind / help / progress / task / ignore. Anything unclear → ignore, silently. |
 
-The classifier sees today's date (Seoul and Bangkok), the trip dates, the five names, the current Ideas/Stays titles and the open checklist rows, so "I'm in for Gwangjang" and "booked my flight" resolve to the right row.
+The classifier sees today's date (Seoul and Bangkok), the trip dates, the members' names, the current Ideas/Stays titles and the open checklist rows, so "I'm in for Gwangjang" and "booked my flight" resolve to the right row.
 
 Every card has an **I'm in** button — that is the vote. Wrong category? Tap the right one.
 
-## Commands (any of the five languages)
+## Commands (any of the group's languages)
 
 | Type | Effect |
 |---|---|
@@ -59,7 +58,7 @@ Every card has an **I'm in** button — that is the vote. Wrong category? Tap th
 | `group id` | This group's LINE id and whether the bot is registered here (diagnostic). |
 | `use this group` | Registers this group for reminders when none is registered yet. |
 
-Names must match the Crew table: Amber · Akiha · Hye Yeon · Gigi · Nadia.
+Names must match the Crew table: Amber · Akiha · Hye Yeon · Gigi.
 
 ## What gets written where
 

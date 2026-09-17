@@ -626,7 +626,6 @@ const S={
 "prog.due":["by","期限","期限","기한","sebelum"],
 "prog.auto":["ticked automatically from your flight / the itinerary","依航班或行程資料自動勾選","フライト／行程から自動でチェック","항공편·일정 데이터로 자동 체크","dicentang otomatis dari penerbangan / itinerary"],
 "ess.h":["Before we fly","出發前","出発前に","출발 전","Sebelum terbang"],
-"ess1":["🇮🇩|Indonesian passport|Korea isn't visa-free for Indonesia — start the tourist visa now, it takes weeks. Everyone else: check whether you need K-ETA.","🇮🇩|印尼護照|韓國對印尼不免簽，觀光簽要及早送件（需數週）。其他人請確認自己要不要 K-ETA。","🇮🇩|インドネシア旅券|韓国はインドネシアにビザ免除ではありません。観光ビザを今すぐ申請（数週間）。他の人は K-ETA の要否を確認。","🇮🇩|인도네시아 여권|한국은 인도네시아 무비자 대상이 아닙니다. 관광 비자를 지금 신청하세요(몇 주 소요). 나머지는 K-ETA 필요 여부 확인.","🇮🇩|Paspor Indonesia|Korea tidak bebas visa untuk Indonesia — ajukan visa turis sekarang, butuh berminggu-minggu. Yang lain: cek K-ETA."],
 "ess2":["📱|Maps|Google Maps barely navigates in Korea. Install Naver Map or KakaoMap before you land.","📱|地圖|Google 地圖在韓國幾乎不能導航。落地前先裝 Naver Map 或 KakaoMap。","📱|地図|韓国では Google マップがほぼ案内できません。着陸前に Naver Map か KakaoMap を。","📱|지도|외국 번호로는 구글 지도 길찾기가 제한됩니다. 네이버 지도·카카오맵을 미리 받아 두세요.","📱|Peta|Google Maps nyaris tak bisa navigasi di Korea. Pasang Naver Map atau KakaoMap sebelum mendarat."],
 "ess3":["💳|T-money|One card for subway, buses and most taxis. Any convenience store sells and tops it up — cash.","💳|T-money 卡|地鐵、公車、多數計程車都能用。超商就能買和加值，收現金。","💳|T-money|地下鉄・バス・多くのタクシーで使用可。コンビニで購入とチャージ（現金）。","💳|티머니|지하철·버스·대부분 택시에서 사용. 편의점에서 구매·충전(현금).","💳|T-money|Satu kartu untuk subway, bus, dan hampir semua taksi. Beli & isi ulang di minimarket, tunai."],
 "ess4":["📶|Data|Everyone buys their own eSIM. Do it before the trip, not at the airport.","📶|網路|各自買自己的 eSIM。出發前先弄好，別到機場才買。","📶|通信|各自で eSIM を購入。空港ではなく事前に。","📶|데이터|각자 eSIM을 준비하세요. 공항 말고 미리.","📶|Data|Beli eSIM masing-masing. Sebelum berangkat, bukan di bandara."],
@@ -786,7 +785,7 @@ const CUR={THB:{s:"฿",d:0},KRW:{s:"₩",d:0},TWD:{s:"NT$",d:0},JPY:{s:"¥",d:0
 const RATES0={KRW:1,THB:42,TWD:45,JPY:9.5,HKD:185,IDR:0.088,USD:1440};  // seed values — edit on the Trip pane
 const SEATS=[{id:"tw",flag:"🇹🇼",c:"--p1",cur:"THB",n:"Amber"},{id:"jp",flag:"🇯🇵",c:"--p2",cur:"THB",n:"Akiha"},
 {id:"kr",flag:"🇰🇷",c:"--p3",cur:"THB",n:"Hye Yeon"},{id:"hk",flag:"🇭🇰",c:"--p4",cur:"THB",n:"Gigi"},
-{id:"id",flag:"🇮🇩",c:"--p5",cur:"THB",n:"Nadia"}];  // everyone lives in Thailand — settle in baht
+];  // everyone lives in Thailand — settle in baht. Nadia (id, 🇮🇩, --p5) dropped out 2026-09-17.
 const EXTRA_C=["--p6","--p7","--p8","--p9"];
 const DAYS=["2026-10-17","2026-10-18","2026-10-19","2026-10-20"];
 const LOCALE={en:"en-GB",zh:"zh-TW",ja:"ja-JP",ko:"ko-KR",id:"id-ID"};
@@ -957,7 +956,7 @@ function renderTrip(){
       '<span class="fl">'+esc(m&&m.name?arriveText(m):t("seat.claim"))+'</span></button>';}).join("");
 
   renderProgress();
-  $("#essentials").innerHTML=["ess1","ess2","ess3","ess4","ess5"].map(k=>{
+  $("#essentials").innerHTML=["ess2","ess3","ess4","ess5"].map(k=>{
     const p=t(k).split("|"); return '<li><span>'+p[0]+'</span><span><b>'+esc(p[1])+'</b> — '+esc(p[2])+'</span></li>';}).join("");
 
 }

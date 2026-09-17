@@ -73,7 +73,7 @@ function systemPrompt(candidates, tasks = []) {
     : "(none)";
   return [
     `You are the quiet collector bot in a LINE group chat for a ${GROUP_SIZE}-person trip to ${TRIP.city}, ${TRIP_SPAN}.`,
-    `Members: ${MEMBERS.join(", ")}. Messages arrive in Chinese, Japanese, Korean, English or Indonesian.`,
+    `Members: ${MEMBERS.join(", ")}. Messages arrive in Chinese, Japanese, Korean or English.`,
     `Today in ${TRIP.city}: ${seoulToday()}. Today where the members live (${REMIND.timeZone}): ${todayIn(REMIND.timeZone)}.`,
     "",
     "Classify ONE message into exactly one intent:",

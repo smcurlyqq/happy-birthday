@@ -1,7 +1,9 @@
 # Seoul Loop — 交接筆記
 
-首爾四日旅行（2026/10/17 六 – 10/20 二）的共同計畫工具。五個人來自五個國家：
-Amber 🇹🇼 · Akiha 🇯🇵 · Hye Yeon 🇰🇷 · Gigi 🇭🇰 · Nadia 🇮🇩
+首爾四日旅行（2026/10/17 六 – 10/20 二）的共同計畫工具。四個人來自四個地方：
+Amber 🇹🇼 · Akiha 🇯🇵 · Hye Yeon 🇰🇷 · Gigi 🇭🇰
+
+（Nadia 🇮🇩 原本是第五人，2026-09-17 退出。她的 Crew 列和兩個任務列搬到 Notion 主頁下的「Archive」子頁；程式裡 seat `id`、顏色 `--p5`、印尼文歡迎段落都已移除，網頁的印尼文介面語言保留。要她回來：把三個頁面搬回資料庫、`config.js` 和 `index.html` 的 SEATS 加回去。）
 
 這份文件是給「接手繼續做的人」看的 —— 包含現在的狀態、所有 ID、已經做過的決定和踩過的坑。
 
@@ -41,7 +43,7 @@ https://smcurlyqq.github.io/happy-birthday/korea/
 ```
 這個網址是公開的，可以直接貼 LINE 群。**已生效（2026-09-11）。**
 
-要改的地方都在 `index.html` 的常數區：`DAYS`（四天日期）、`SEATS`（五個人與代表色）、`RATES0`（預設匯率）。
+要改的地方都在 `index.html` 的常數區：`DAYS`（四天日期）、`SEATS`（成員與代表色）、`RATES0`（預設匯率）。
 
 ---
 
@@ -68,7 +70,7 @@ https://smcurlyqq.github.io/happy-birthday/korea/
 
 2026-09-17 新增兩張表（欄位名是中英雙語，bot 用 `bot/src/notion.js` 裡的 `CL` / `STATUS` / `CATS` 常數對應）：
 
-- **6 · 出發前任務 Checklist**：出發前要做的事。`誰 Who` 填一個人 = 個人任務（一人一列，例如訂機票有 Gigi、Nadia 兩列）；空白 = 全員任務。`截止 Due` 是提醒的依據，`靜音 Mute` 勾了就不提醒。設計文件：`docs/superpowers/specs/2026-09-17-checklist-reminders-design.md`。
+- **6 · 出發前任務 Checklist**：出發前要做的事。`誰 Who` 填一個人 = 個人任務（一人一列，例如訂機票原本有 Gigi、Nadia 兩列）；空白 = 全員任務。`截止 Due` 是提醒的依據，`靜音 Mute` 勾了就不提醒。設計文件：`docs/superpowers/specs/2026-09-17-checklist-reminders-design.md`。
 - **7 · 機器人設定 Bot config**：key/value。目前只有 `line_group_id`，bot 第一次被邀進群會自己填，之後定時提醒推到這個群。要換群就把值清空再邀一次。
 
 ---
@@ -142,5 +144,4 @@ Cloudflare API token 建立時的坑：「Edit Cloudflare Workers」範本套完
 1. Actions → Deploy LINE bot 重新部署（這版才有 cron 與 Checklist）。
 2. 把 mbpp 加好友（LINE Developers → Messaging API 分頁的 QR code）→ 邀進群 → 它會回英文說明並自己把群組 ID 寫進 Bot config。
 3. 群裡打 `progress`，對照 Notion Checklist；再實測：一個 Airbnb 連結、一句記帳、一句推薦、一句行程、按一次 I'm in、一句「booked my flight」、一句閒聊（應該沒反應）。每個人打 I am 名字綁定。
-4. 提醒 🇮🇩 Nadia：**韓國對印尼不免簽**，觀光簽要及早送件。距離出發只剩約五週。
 5. 網頁與 Notion 連結貼進群。

@@ -8,8 +8,9 @@ const LINE = "https://api.line.me/v2/bot";
 import { TRIP, MEMBER_LIST, PAGE_URL } from "./config.js";
 export { MEMBER_LIST, PAGE_URL };
 
-/* One welcome message: English first, then the same guide in Japanese, Korean,
-   Cantonese and Indonesian. Example messages stay in English everywhere — the group talks in English. */
+/* One welcome message: English first, then the same guide in Japanese, Korean
+   and Cantonese. Example messages stay in English everywhere — the group talks in English. */
+const N = TRIP.members.length;
 const EX = {
   link:  "https://www.airbnb.com/rooms/…",
   idea:  "“Let’s try Gwangjang Market”",
@@ -28,7 +29,7 @@ const HELP_TEXT = [
   `• A link or a screenshot of a place → Ideas (hotels go to Stays)`,
   `• ${EX.idea} → Ideas`,
   `• ${EX.vote}, or tap I’m in on a card → your vote`,
-  `• ${EX.paid} → Expenses, in won, split 5 ways unless you name people`,
+  `• ${EX.paid} → Expenses, in won, split ${N} ways unless you name people`,
   `• ${EX.plan} → Itinerary`,
   `First, type ${EX.iam} once (${MEMBER_LIST}). Type “help” to see this again. Otherwise I stay quiet.`,
   "",
@@ -36,7 +37,7 @@ const HELP_TEXT = [
   `• リンクや店のスクショ → Ideas（ホテルは Stays）`,
   `• ${EX.idea} → Ideas`,
   `• ${EX.vote} またはカードの I’m in → 投票`,
-  `• ${EX.paid} → Expenses（ウォン。名前を書かなければ5人で割り勘）`,
+  `• ${EX.paid} → Expenses（ウォン。名前を書かなければ${N}人で割り勘）`,
   `• ${EX.plan} → Itinerary`,
   `最初に一度 ${EX.iam} と送ってください。「help」でこの説明を再表示。それ以外は黙っています。`,
   "",
@@ -44,7 +45,7 @@ const HELP_TEXT = [
   `• 링크나 장소 스크린샷 → Ideas (호텔은 Stays)`,
   `• ${EX.idea} → Ideas`,
   `• ${EX.vote} 또는 카드의 I’m in → 투표`,
-  `• ${EX.paid} → Expenses (원화, 이름을 안 쓰면 5명이 나눔)`,
+  `• ${EX.paid} → Expenses (원화, 이름을 안 쓰면 ${N}명이 나눔)`,
   `• ${EX.plan} → Itinerary`,
   `먼저 ${EX.iam} 을 한 번 보내 주세요. “help” 를 치면 이 안내를 다시 볼 수 있어요. 그 외엔 조용히 있을게요.`,
   "",
@@ -52,20 +53,12 @@ const HELP_TEXT = [
   `• 貼 link 或者店嘅 screenshot → Ideas（酒店入 Stays）`,
   `• ${EX.idea} → Ideas`,
   `• ${EX.vote} 或者撳張卡上面嘅 I’m in → 投票`,
-  `• ${EX.paid} → Expenses（韓圜，唔寫名就五個人夾）`,
+  `• ${EX.paid} → Expenses（韓圜，唔寫名就${N}個人夾）`,
   `• ${EX.plan} → Itinerary`,
   `一開始先打一次 ${EX.iam}。打 “help” 可以再睇一次呢段。其他時候我唔會出聲。`,
-  "",
-  "🇮🇩 Semua yang kamu tulis di sini masuk ke halaman trip kita. Tulis seperti biasa saja:",
-  `• Tautan atau screenshot tempat → Ideas (hotel masuk Stays)`,
-  `• ${EX.idea} → Ideas`,
-  `• ${EX.vote}, atau tekan I’m in di kartu → vote kamu`,
-  `• ${EX.paid} → Expenses, dalam won, dibagi 5 kecuali kamu sebut nama`,
-  `• ${EX.plan} → Itinerary`,
-  `Pertama, ketik ${EX.iam} sekali. Ketik “help” untuk lihat ini lagi. Selain itu aku diam.`,
 ].join("\n");
 
-/** The welcome / help reply: one message, five languages, English examples. */
+/** The welcome / help reply: one message, four languages, English examples. */
 export const HELP_MESSAGES = [{ type: "text", text: HELP_TEXT }];
 export const HELP = HELP_TEXT;
 

@@ -61,16 +61,16 @@ const cases = [
 // Open checklist rows, as the bot passes them (id | title | cat | who | due).
 const tasks = [
   { id: "3dbb331a-3250-8192-8dbc-c06e875005d7", title: "訂機票",          cat: "flights", who: "Gigi",  due: "2026-09-21" },
-  { id: "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2", title: "訂機票",          cat: "flights", who: "Nadia", due: "2026-09-21" },
-  { id: "3dbb331a-3250-81b3-beb4-c9a30abec9ef", title: "韓國觀光簽證送件", cat: "visa",    who: "Nadia", due: "2026-09-21" },
+  { id: "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2", title: "訂機票",          cat: "flights", who: "Akiha", due: "2026-09-21" },
+  { id: "3dbb331a-3250-81b3-beb4-c9a30abec9ef", title: "確認要不要申請 K-ETA", cat: "visa", who: "Akiha", due: "2026-10-03" },
   { id: "3dbb331a-3250-8138-8b6e-c1b0e0865683", title: "決定住哪一區",    cat: "stay",    who: null,    due: "2026-09-28" },
   { id: "3dbb331a-3250-8184-a701-e3de910dda24", title: "訂住宿",          cat: "stay",    who: null,    due: "2026-10-01" },
 ];
 const TASK_CASES = [
   // progress: finished a checklist item
   ["Gigi",     "booked my flight!! arriving sat morning",                  "progress", "3dbb331a-3250-8192-8dbc-c06e875005d7"],
-  ["Nadia",    "visa submitted today 🙏",                                  "progress", "3dbb331a-3250-81b3-beb4-c9a30abec9ef"],
-  ["Nadia",    "aku udah beli tiket pesawat",                              "progress", "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2"],
+  ["Akiha",    "K-ETA申請した！",                                          "progress", "3dbb331a-3250-81b3-beb4-c9a30abec9ef"],
+  ["Akiha",    "航空券取ったよ",                                            "progress", "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2"],
   ["Amber",    "we booked the airbnb, done",                               "progress", "3dbb331a-3250-8184-a701-e3de910dda24"],
   ["Hye Yeon", "숙소 예약 완료!",                                            "progress", "3dbb331a-3250-8184-a701-e3de910dda24"],
   ["Amber",    "did everyone book their flights?",                         "ignore"],
@@ -79,7 +79,7 @@ const TASK_CASES = [
   ["Amber",    "remind everyone to buy a T-money card by Oct 10",          "task"],
   ["Gigi",     "we need to decide the meeting point by Oct 8",             "task"],
   ["Akiha",    "10/14までに保険入っておこう",                                "task"],
-  ["Nadia",    "we should buy travel insurance at some point",             "ignore"],
+  ["Gigi",     "we should buy travel insurance at some point",             "ignore"],
 ];
 
 const env = { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY };

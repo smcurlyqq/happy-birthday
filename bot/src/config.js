@@ -17,7 +17,7 @@ export const TRIP = {
     { seat: "jp", name: "Akiha",    flag: "🇯🇵", c: "--p2" },
     { seat: "kr", name: "Hye Yeon", flag: "🇰🇷", c: "--p3" },
     { seat: "hk", name: "Gigi",     flag: "🇭🇰", c: "--p4" },
-    { seat: "id", name: "Nadia",    flag: "🇮🇩", c: "--p5" },
+    // Nadia (🇮🇩, seat "id", --p5) dropped out on 2026-09-17; her rows are in the Notion Archive page.
   ],
   /** Currency everyone settles in (the page shows conversions in this). */
   settleCurrency: "THB",
