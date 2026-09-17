@@ -1,6 +1,8 @@
 /**
- * Notion access for the five Seoul Loop boards. Property names are the
- * English ones set on 2026-09-11; change them here if the schema moves.
+ * Notion access for the Seoul Loop boards. The five trip boards use the
+ * English property names set on 2026-09-11; the Checklist and Bot config
+ * boards (added 2026-09-17) keep their bilingual names. Change them here if
+ * the schema moves.
  */
 
 const NOTION = "https://api.notion.com/v1";
@@ -27,13 +29,14 @@ export const plainText = p => (p?.rich_text || []).map(t => t.plain_text).join("
 
 /* ── crew ───────────────────────────────────────────────────── */
 
-/** All members: [{ id, name, lineId }]. Five rows; one query. */
+/** All members: [{ id, name, lineId, flights }]. Five rows; one query. */
 export async function members(env) {
   const r = await notion(env, `/databases/${env.NOTION_MEMBERS_DB}/query`, "POST", { page_size: 20 });
   return r.results.map(p => ({
     id: p.id,
     name: plainTitle(p.properties["Name"]),
     lineId: plainText(p.properties["LINE ID"]),
+    flights: plainText(p.properties["Flights"]),
   }));
 }
 
@@ -179,4 +182,86 @@ export async function addVote(env, pageId, memberId) {
     });
   }
   return { count: next.length, added, title: plainTitle(page.properties["Place"]), url: page.url };
+}
+
+
+/* ── checklist (board 6) ────────────────────────────────────── */
+
+/** Property names on the Checklist board, exactly as Amber created them. */
+export const CL = { task: "任務 Task", cat: "類別 Category", who: "誰 Who", due: "截止 Due", status: "狀態 Status", mute: "靜音 Mute", note: "備註 Note" };
+export const STATUS = { todo: "待辦 To do", doing: "進行中 Doing", done: "完成 Done" };
+export const CATS = { flights: "機票 Flights", visa: "簽證 Visa", stay: "住宿 Stay", data: "網路 Data", insurance: "保險 Insurance", plan: "行程 Plan", money: "錢 Money", other: "其他 Other" };
+const CAT_KEY = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [v, k]));
+const STATUS_KEY = Object.fromEntries(Object.entries(STATUS).map(([k, v]) => [v, k]));
+
+/**
+ * Every Checklist row, flattened:
+ * { id, title, cat: "flights"|…|"other", whoIds: [crewPageId…], due: "YYYY-MM-DD"|"", status: "todo"|"doing"|"done", mute, note }
+ */
+export async function checklist(env) {
+  const r = await notion(env, `/databases/${env.NOTION_CHECKLIST_DB}/query`, "POST", { page_size: 100 });
+  return r.results.map(p => {
+    const P = p.properties;
+    return {
+      id: p.id,
+      title: plainTitle(P[CL.task]),
+      cat: CAT_KEY[P[CL.cat]?.select?.name] || "other",
+      whoIds: (P[CL.who]?.relation || []).map(x => x.id),
+      due: (P[CL.due]?.date?.start || "").slice(0, 10),
+      status: STATUS_KEY[P[CL.status]?.select?.name] || "todo",
+      mute: !!P[CL.mute]?.checkbox,
+      note: plainText(P[CL.note]),
+      ts: Date.parse(p.last_edited_time) || 0,
+    };
+  });
+}
+
+export const setTaskStatus = (env, pageId, statusKey) =>
+  notion(env, `/pages/${pageId}`, "PATCH", { properties: { [CL.status]: { select: { name: STATUS[statusKey] || STATUS.todo } } } });
+
+/** One new row. whoId null = a task for the whole group. */
+export async function createTask(env, { title: name, cat, due, whoId, note }) {
+  const props = {
+    [CL.task]: { title: title(name) },
+    [CL.cat]: { select: { name: CATS[cat] || CATS.other } },
+    [CL.status]: { select: { name: STATUS.todo } },
+  };
+  if (due) props[CL.due] = { date: { start: due } };
+  if (whoId) props[CL.who] = { relation: [{ id: whoId }] };
+  if (note) props[CL.note] = { rich_text: rich(note) };
+  return notion(env, "/pages", "POST", { parent: { database_id: env.NOTION_CHECKLIST_DB }, properties: props });
+}
+
+/** The set of trip dates that have at least one Itinerary row. */
+export async function itineraryDates(env) {
+  const r = await notion(env, `/databases/${env.NOTION_ITINERARY_DB}/query`, "POST", { page_size: 100 });
+  return new Set(r.results.map(p => (p.properties["Date"]?.date?.start || "").slice(0, 10)).filter(Boolean));
+}
+
+/* ── bot config (board 7) ───────────────────────────────────── */
+
+const CFG = { key: "項目 Key", value: "值 Value" };
+let cfgCache = { at: 0, rows: null };
+const CFG_TTL = 60_000;
+
+async function configRows(env) {
+  if (cfgCache.rows && Date.now() - cfgCache.at < CFG_TTL) return cfgCache.rows;
+  const r = await notion(env, `/databases/${env.NOTION_CONFIG_DB}/query`, "POST", { page_size: 50 });
+  const rows = r.results.map(p => ({ id: p.id, key: plainTitle(p.properties[CFG.key]).trim(), value: plainText(p.properties[CFG.value]).trim() }));
+  cfgCache = { at: Date.now(), rows };
+  return rows;
+}
+
+/** A config value by key ("" when the row is missing or empty). Cached for a minute. */
+export async function config(env, key) {
+  return (await configRows(env)).find(r => r.key === key)?.value || "";
+}
+
+/** Write a config value, creating the row if it does not exist yet. */
+export async function setConfig(env, key, value) {
+  const hit = (await configRows(env)).find(r => r.key === key);
+  const props = { [CFG.value]: { rich_text: rich(value) } };
+  if (hit) await notion(env, `/pages/${hit.id}`, "PATCH", { properties: props });
+  else await notion(env, "/pages", "POST", { parent: { database_id: env.NOTION_CONFIG_DB }, properties: { [CFG.key]: { title: title(key) }, ...props } });
+  cfgCache = { at: 0, rows: null };
 }

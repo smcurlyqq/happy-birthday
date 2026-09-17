@@ -1,6 +1,7 @@
 name: Test bot classifier
 
-# Runs the classifier against ~25 sample messages with the real API key.
+# Runs the checklist reminder logic (no key needed), then the classifier
+# against ~45 sample messages with the real API key.
 # Manual only — each run costs a few cents. Read the log to see how each
 # message was classified.
 on:
@@ -16,7 +17,9 @@ jobs:
           node-version: 22
       - run: npm ci
         working-directory: bot
-      - run: node --check src/index.js && node --check src/classify.js && node --check src/notion.js && node --check src/line.js && node --check src/links.js
+      - run: for f in src/*.js; do node --check "$f"; done
+        working-directory: bot
+      - run: node test/remind.mjs
         working-directory: bot
       - run: node test/classify.mjs
         working-directory: bot

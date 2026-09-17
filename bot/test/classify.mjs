@@ -58,6 +58,30 @@ const cases = [
   ["Akiha",    "let's try Gwangjang Market",                                "vote"],
 ];
 
+// Open checklist rows, as the bot passes them (id | title | cat | who | due).
+const tasks = [
+  { id: "3dbb331a-3250-8192-8dbc-c06e875005d7", title: "訂機票",          cat: "flights", who: "Gigi",  due: "2026-09-21" },
+  { id: "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2", title: "訂機票",          cat: "flights", who: "Nadia", due: "2026-09-21" },
+  { id: "3dbb331a-3250-81b3-beb4-c9a30abec9ef", title: "韓國觀光簽證送件", cat: "visa",    who: "Nadia", due: "2026-09-21" },
+  { id: "3dbb331a-3250-8138-8b6e-c1b0e0865683", title: "決定住哪一區",    cat: "stay",    who: null,    due: "2026-09-28" },
+  { id: "3dbb331a-3250-8184-a701-e3de910dda24", title: "訂住宿",          cat: "stay",    who: null,    due: "2026-10-01" },
+];
+const TASK_CASES = [
+  // progress: finished a checklist item
+  ["Gigi",     "booked my flight!! arriving sat morning",                  "progress", "3dbb331a-3250-8192-8dbc-c06e875005d7"],
+  ["Nadia",    "visa submitted today 🙏",                                  "progress", "3dbb331a-3250-81b3-beb4-c9a30abec9ef"],
+  ["Nadia",    "aku udah beli tiket pesawat",                              "progress", "3dbb331a-3250-81a1-b3a0-c92dbc4e52f2"],
+  ["Amber",    "we booked the airbnb, done",                               "progress", "3dbb331a-3250-8184-a701-e3de910dda24"],
+  ["Hye Yeon", "숙소 예약 완료!",                                            "progress", "3dbb331a-3250-8184-a701-e3de910dda24"],
+  ["Amber",    "did everyone book their flights?",                         "ignore"],
+  ["Gigi",     "I'll book my flight tomorrow",                             "ignore"],
+  // task: something new with a date
+  ["Amber",    "remind everyone to buy a T-money card by Oct 10",          "task"],
+  ["Gigi",     "we need to decide the meeting point by Oct 8",             "task"],
+  ["Akiha",    "10/14までに保険入っておこう",                                "task"],
+  ["Nadia",    "we should buy travel insurance at some point",             "ignore"],
+];
+
 const env = { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY };
 if (!env.ANTHROPIC_API_KEY) { console.error("ANTHROPIC_API_KEY not set"); process.exit(2); }
 
@@ -72,5 +96,19 @@ for (const [sender, msg, want] of cases) {
   const detail = out?.[out.intent] ? " " + JSON.stringify(out[out.intent]) : "";
   console.log(`${ok ? "✓" : "✗"} ${want.padEnd(9)} got ${got.padEnd(9)} c=${out?.confidence ?? "-"} ${ms}ms  ${sender}: ${msg}${detail}`);
 }
-console.log(`\n${cases.length - bad}/${cases.length} as expected`);
+for (const [sender, msg, want, target] of TASK_CASES) {
+  const t0 = Date.now();
+  const out = await classify(env, { text: msg, senderName: sender, candidates, tasks });
+  const ms = Date.now() - t0;
+  const got = !out ? "null" : out.confidence < 0.7 ? `ignore(<0.7 ${out.intent} ${out.confidence})` : out.intent;
+  let ok = got === want || (want === "ignore" && got.startsWith("ignore"));
+  if (ok && want === "progress" && target && (out.progress?.target_id || "").replace(/-/g, "") !== target.replace(/-/g, "")) ok = false;
+  if (ok && want === "task" && !/^\d{4}-\d{2}-\d{2}$/.test(out.task?.due || "")) ok = false;
+  if (!ok) bad++;
+  const detail = out?.[out.intent] ? " " + JSON.stringify(out[out.intent]) : "";
+  console.log(`${ok ? "✓" : "✗"} ${want.padEnd(9)} got ${got.padEnd(9)} c=${out?.confidence ?? "-"} ${ms}ms  ${sender}: ${msg}${detail}`);
+}
+
+const total = cases.length + TASK_CASES.length;
+console.log(`\n${total - bad}/${total} as expected`);
 process.exit(bad > 2 ? 1 : 0);   // allow a couple of judgement calls to differ

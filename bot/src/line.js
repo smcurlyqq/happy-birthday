@@ -100,6 +100,16 @@ export async function reply(env, replyToken, messages) {
   if (!r.ok) console.error("line reply", r.status, await r.text());
 }
 
+/** Send to a group without a reply token — used by the scheduled reminder. */
+export async function push(env, to, messages) {
+  const r = await fetch(LINE + "/message/push", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ to, messages }),
+  });
+  if (!r.ok) throw new Error(`line push ${r.status} ${await r.text()}`);
+}
+
 /** Leave a group or room we were not invited to. */
 export async function leave(env, source) {
   const path = source.groupId ? `/group/${source.groupId}/leave`

@@ -25,6 +25,19 @@ export const TRIP = {
   localCurrency: "KRW",
 };
 
+/**
+ * Pre-trip checklist reminders. Everyone lives in Thailand, so "today" for deadlines is
+ * Bangkok, not the trip city. The hour itself is the cron line in wrangler.toml (UTC).
+ */
+export const REMIND = {
+  timeZone: "Asia/Bangkok",
+  leadDays: 3,              // first nudge this many days before a deadline; second on the day
+};
+
+/** Calendar date (YYYY-MM-DD) in a time zone. */
+export const todayIn = (timeZone, now = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+
 export const MEMBER_NAMES = TRIP.members.map(m => m.name);
 export const MEMBER_LIST = MEMBER_NAMES.join(" · ");
 export const PAGE_URL = TRIP.pageUrl;

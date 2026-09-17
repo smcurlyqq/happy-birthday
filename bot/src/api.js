@@ -2,9 +2,9 @@
  * /api — the web page's shared data layer, backed by the same five Notion
  * boards the LINE bot writes to.
  *
- *   GET    /api/state              → { members, prefs, ideas, slots, expenses }
- *   PUT    /api/:coll/:id  (json)  → upsert one document
- *   DELETE /api/:coll/:id          → archive it (members can't be deleted)
+ *   GET    /api/state              → { members, prefs, ideas, slots, expenses, tasks }
+ *   PUT    /api/:coll/:id  (json)  → upsert one document (tasks: only { status } is written)
+ *   DELETE /api/:coll/:id          → archive it (members and tasks can't be deleted)
  *
  * Document shapes are exactly what korea/index.html keeps in its `D` object,
  * so the page needs no knowledge of Notion. Ids: the page's own ids are
@@ -12,7 +12,8 @@
  * are addressed by their Notion page id (32 hex chars).
  */
 
-import { notion, plainTitle, plainText } from "./notion.js";
+import { notion, plainTitle, plainText, checklist, itineraryDates, setTaskStatus } from "./notion.js";
+import { evaluate } from "./checklist.js";
 
 import { TRIP, DAYS } from "./config.js";
 const SEATS = Object.fromEntries(TRIP.members.map(m => [m.seat, { name: m.name, flag: m.flag, c: m.c }]));
@@ -48,7 +49,7 @@ export async function handleApi(req, env) {
 
     const [coll, rawId] = parts;
     const id = rawId ? decodeURIComponent(rawId) : null;
-    if (!coll || !id || !["members", "prefs", "ideas", "slots", "expenses"].includes(coll))
+    if (!coll || !id || !["members", "prefs", "ideas", "slots", "expenses", "tasks"].includes(coll))
       return json({ error: "not found" }, 404, cors);
 
     if (req.method === "PUT") {
@@ -58,7 +59,7 @@ export async function handleApi(req, env) {
       return json(out, 200, cors);
     }
     if (req.method === "DELETE") {
-      if (coll === "members" || coll === "prefs") return json({ error: "members can't be deleted" }, 405, cors);
+      if (coll === "members" || coll === "prefs" || coll === "tasks") return json({ error: `${coll} can't be deleted` }, 405, cors);
       invalidate();
       await remove(env, coll, id);
       return json({ ok: true }, 200, cors);
@@ -110,15 +111,15 @@ const invalidate = () => { cache = { at: 0, data: null }; };
 
 async function state(env) {
   if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data;
-  const [crew, ideas, stays, slots, expenses] = await Promise.all([
+  const [crew, ideas, stays, slots, expenses, tasks] = await Promise.all([
     rows(env, env.NOTION_MEMBERS_DB), rows(env, env.NOTION_IDEAS_DB), rows(env, env.NOTION_STAYS_DB),
-    rows(env, env.NOTION_ITINERARY_DB), rows(env, env.NOTION_EXPENSES_DB),
+    rows(env, env.NOTION_ITINERARY_DB), rows(env, env.NOTION_EXPENSES_DB), checklist(env),
   ]);
   const crewIx = crewIndex(crew);                      // notionPageId → docId
   const seat = pid => crewIx[pid] || null;
 
   const fx = await rates();
-  const out = { members: {}, prefs: {}, ideas: {}, slots: {}, expenses: {}, rates: fx.data, ratesLive: fx.live, ratesAsOf: fx.asOf || null, ts: Date.now() };
+  const out = { members: {}, prefs: {}, ideas: {}, slots: {}, expenses: {}, tasks: {}, rates: fx.data, ratesLive: fx.live, ratesAsOf: fx.asOf || null, ts: Date.now() };
 
   let extra = 0;
   for (const p of crew) {
@@ -192,6 +193,16 @@ async function state(env) {
     };
   }
 
+  // Checklist: the same auto rules as the bot (a flight number in Crew = flights booked, …).
+  const crewLite = crew.map(p => ({ id: p.id, name: plainTitle(p.properties["Name"]), flights: plainText(p.properties["Flights"]) }));
+  const dates = new Set(slots.map(p => (p.properties["Date"]?.date?.start || "").slice(0, 10)).filter(Boolean));
+  for (const r of evaluate({ rows: tasks, crew: crewLite, itineraryDates: dates })) {
+    out.tasks[r.id.replace(/-/g, "")] = {
+      title: r.title, cat: r.cat, who: r.who ? seat(r.who.id) : null, due: r.due,
+      status: r.status, done: r.done, auto: r.autoDone, mute: r.mute, note: r.note, ts: r.ts,
+    };
+  }
+
   cache = { at: Date.now(), data: out };
   return out;
 }
@@ -231,6 +242,15 @@ async function upsert(env, coll, id, body) {
   if (coll === "ideas")   return putIdea(env, id, body);
   if (coll === "slots")   return putSlot(env, id, body);
   if (coll === "expenses") return putExpense(env, id, body);
+  if (coll === "tasks")   return putTask(env, id, body);
+}
+
+/** The page may only flip a task's status; everything else about a task is edited in Notion or by the bot. */
+async function putTask(env, id, tk) {
+  if (!isPageId(id)) throw new Error("unknown task " + id);
+  const status = ["todo", "doing", "done"].includes(tk.status) ? tk.status : "todo";
+  await setTaskStatus(env, dashed(id), status);
+  return { id };
 }
 
 /** Find the Crew page for a seat/doc id, creating it when the page adds a new person. */

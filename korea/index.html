@@ -163,6 +163,19 @@ label.f{display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px}
   padding:11px 0;border-bottom:1px solid var(--rule)}
 .checklist li:last-child{border-bottom:0}
 .checklist li b{font-weight:700}
+.prog li{grid-template-columns:24px 1fr auto;align-items:center}
+.prog .due{display:block;font-size:11px;color:var(--ink3);font-weight:600;margin-top:1px}
+.prog .due.hot{color:var(--accent2)}
+.prog li.alldone b,.prog li.alldone .due{color:var(--ink3);text-decoration:line-through}
+.prog .avs{display:flex;gap:4px;align-items:center}
+.prog .avs button{border:0;background:transparent;padding:0;cursor:default;font:inherit;line-height:0}
+.prog .avs button.mine{cursor:pointer}
+.prog .avs .av{width:24px;height:24px;font-size:11px;opacity:.28;transition:opacity .15s}
+.prog .avs .av.on{opacity:1}
+.prog .tick{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--rule2);background:transparent;color:transparent;
+  display:grid;place-items:center;font-size:13px;font-weight:800;cursor:pointer;padding:0;line-height:0}
+.prog .tick.on{background:var(--good);border-color:var(--good);color:#fff}
+.prog .tick.auto{cursor:default}
 .rates{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
 .rates label{display:flex;flex-direction:column;gap:1px;font-size:9.5px;font-weight:600;letter-spacing:.11em;
   text-transform:uppercase;color:var(--ink3)}
@@ -425,6 +438,11 @@ dialog{border:1px solid var(--rule);border-radius:18px}
   <div class="seats" id="seats"></div>
   <div class="row"><button class="btn ghost tiny" id="addseat" data-i="crew.add">+ add someone</button></div>
 
+  <div class="head"><h2 data-i="prog.h">Progress</h2><p data-i="prog.p">tap your avatar when it's done</p></div>
+  <div class="card" style="padding:13px 14px">
+    <ul class="checklist prog" id="progress"></ul>
+  </div>
+
   <div class="head"><h2 data-i="ess.h">Before we fly</h2></div>
   <div class="card" style="padding:13px 14px">
     <ul class="checklist" id="essentials"></ul>
@@ -601,6 +619,12 @@ const S={
 "seat.noflight":["arrival not set","抵達時間未填","到着未設定","도착 시간 미정","jam tiba belum diisi"],
 "seat.arrives":["Arrives","抵達","到着","도착","Tiba"],
 "seat.claim":["tap to claim this seat","點一下登記這個位子","タップして登録","눌러서 등록","ketuk untuk ambil kursi"],
+"prog.h":["Progress","進度","進捗","진행 상황","Progres"],
+"prog.p":["tap your avatar when it's done","做好了就點自己的頭像","終わったら自分のアイコンをタップ","끝냈으면 내 아이콘을 탭","ketuk avatarmu kalau sudah"],
+"prog.none":["nothing on the list yet","目前沒有待辦","まだ項目はありません","아직 항목이 없어요","belum ada tugas"],
+"prog.every":["everyone","全員","全員","모두","semua orang"],
+"prog.due":["by","期限","期限","기한","sebelum"],
+"prog.auto":["ticked automatically from your flight / the itinerary","依航班或行程資料自動勾選","フライト／行程から自動でチェック","항공편·일정 데이터로 자동 체크","dicentang otomatis dari penerbangan / itinerary"],
 "ess.h":["Before we fly","出發前","出発前に","출발 전","Sebelum terbang"],
 "ess1":["🇮🇩|Indonesian passport|Korea isn't visa-free for Indonesia — start the tourist visa now, it takes weeks. Everyone else: check whether you need K-ETA.","🇮🇩|印尼護照|韓國對印尼不免簽，觀光簽要及早送件（需數週）。其他人請確認自己要不要 K-ETA。","🇮🇩|インドネシア旅券|韓国はインドネシアにビザ免除ではありません。観光ビザを今すぐ申請（数週間）。他の人は K-ETA の要否を確認。","🇮🇩|인도네시아 여권|한국은 인도네시아 무비자 대상이 아닙니다. 관광 비자를 지금 신청하세요(몇 주 소요). 나머지는 K-ETA 필요 여부 확인.","🇮🇩|Paspor Indonesia|Korea tidak bebas visa untuk Indonesia — ajukan visa turis sekarang, butuh berminggu-minggu. Yang lain: cek K-ETA."],
 "ess2":["📱|Maps|Google Maps barely navigates in Korea. Install Naver Map or KakaoMap before you land.","📱|地圖|Google 地圖在韓國幾乎不能導航。落地前先裝 Naver Map 或 KakaoMap。","📱|地図|韓国では Google マップがほぼ案内できません。着陸前に Naver Map か KakaoMap を。","📱|지도|외국 번호로는 구글 지도 길찾기가 제한됩니다. 네이버 지도·카카오맵을 미리 받아 두세요.","📱|Peta|Google Maps nyaris tak bisa navigasi di Korea. Pasang Naver Map atau KakaoMap sebelum mendarat."],
@@ -772,7 +796,7 @@ let lang=(localStorage.getItem("sl.lang")||(navigator.language||"en").slice(0,2)
 if(!LANGS.includes(lang)) lang = (navigator.language||"").startsWith("zh")?"zh":"en";
 let me=localStorage.getItem("sl.me")||"";
 let pane="trip", ideaFilter="all", pendingSeat=null;
-const D={members:{},prefs:{},ideas:{},slots:{},expenses:{}};
+const D={members:{},prefs:{},ideas:{},slots:{},expenses:{},tasks:{}};
 let CFG={rates:Object.assign({},RATES0)};
 let DB=null, saveTimer=null;
 
@@ -790,9 +814,9 @@ const krwOf=e=>Number(e.krw!=null&&e.krw!==""?e.krw:Number(e.amt||0)*rate(e.cur|
 /* ───────────────────────── persistence ───────────────────────── */
 const LS="sl.data.v1";
 function loadLocal(){try{const o=JSON.parse(localStorage.getItem(LS)||"{}");
-  for(const k of ["members","prefs","ideas","slots","expenses"]) if(o[k]) D[k]=o[k];
+  for(const k of ["members","prefs","ideas","slots","expenses","tasks"]) if(o[k]) D[k]=o[k];
   if(o.cfg) CFG=o.cfg;}catch(e){}}
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({members:D.members,prefs:D.prefs,ideas:D.ideas,slots:D.slots,expenses:D.expenses,cfg:CFG}));}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({members:D.members,prefs:D.prefs,ideas:D.ideas,slots:D.slots,expenses:D.expenses,tasks:D.tasks,cfg:CFG}));}catch(e){}}
 function put(coll,id,obj){
   D[coll][id]=obj; saveLocal(); render();
   if(DB) DB.doc(coll+"/"+id).set(obj).catch(e=>toast(e.code||"error"));
@@ -842,7 +866,7 @@ async function connect(){
   if(!db&&API) db=remoteDB(API);
   if(!db) return;
   DB=db;
-  for(const coll of ["members","prefs","ideas","slots","expenses"]){
+  for(const coll of ["members","prefs","ideas","slots","expenses","tasks"]){
     DB.collection(coll).onSnapshot(snap=>{
       const next={}; snap.docs.forEach(d=>{ if(d.exists) next[d.id]=d.data(); });
       D[coll]=next; saveLocal(); render();
@@ -932,9 +956,39 @@ function renderTrip(){
       '<span class="nm">'+s.flag+' '+esc(nameOf(id))+'</span>'+
       '<span class="fl">'+esc(m&&m.name?arriveText(m):t("seat.claim"))+'</span></button>';}).join("");
 
+  renderProgress();
   $("#essentials").innerHTML=["ess1","ess2","ess3","ess4","ess5"].map(k=>{
     const p=t(k).split("|"); return '<li><span>'+p[0]+'</span><span><b>'+esc(p[1])+'</b> — '+esc(p[2])+'</span></li>';}).join("");
 
+}
+const PROG_EMOJI={flights:"✈️",visa:"🛂",stay:"🏠",data:"📶",insurance:"🩺",plan:"📅",money:"💴",other:"📌"};
+function renderProgress(){
+  const rows=Object.entries(D.tasks).map(([id,tk])=>Object.assign({id},tk)).filter(tk=>!tk.mute);
+  const box=$("#progress");
+  if(!rows.length){ box.innerHTML='<li><span>📋</span><span class="muted">'+esc(t("prog.none"))+'</span><span></span></li>'; return; }
+  // one line per task title (+ due date): personal rows show one avatar each, group rows one tick
+  const groups=new Map();
+  rows.forEach(tk=>{ const key=tk.title+"|"+(tk.due||""); const g=groups.get(key)||{title:tk.title,cat:tk.cat,due:tk.due||"",people:[],group:null};
+    if(tk.who) g.people.push(tk); else if(!g.group) g.group=tk; groups.set(key,g); });
+  const today=new Date().toISOString().slice(0,10);
+  const list=[...groups.values()].sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999"));
+  box.innerHTML=list.map(g=>{
+    const items=g.people.length?g.people:(g.group?[g.group]:[]);
+    const alldone=items.length&&items.every(tk=>tk.done);
+    const days=g.due?Math.round((Date.parse(g.due+"T12:00:00Z")-Date.parse(today+"T12:00:00Z"))/864e5):null;
+    const hot=!alldone&&days!==null&&days<=3;
+    const dueTxt=g.due?t("prog.due")+" "+new Date(g.due+"T12:00:00Z").toLocaleDateString(LOCALE[lang]||"en-GB",{month:"short",day:"numeric",timeZone:"UTC"}):"";
+    let right;
+    if(g.people.length){
+      right='<span class="avs">'+g.people.map(tk=>{ const mine=tk.who===me&&!tk.auto;
+        return '<button type="button" '+(mine?'class="mine" data-task="'+esc(tk.id)+'"':'disabled')+' title="'+esc(nameOf(tk.who))+(tk.auto?' · '+t("prog.auto"):'')+'">'+
+          av(tk.who,24).replace('class="av"','class="av'+(tk.done?' on':'')+'"')+'</button>'; }).join("")+'</span>';
+    }else{ const tk=g.group;
+      right='<button type="button" class="tick'+(tk.done?" on":"")+(tk.auto?" auto":"")+'" '+(tk.auto?'disabled title="'+esc(t("prog.auto"))+'"':'data-task="'+esc(tk.id)+'"')+' aria-pressed="'+!!tk.done+'">✓</button>'; }
+    return '<li'+(alldone?' class="alldone"':'')+'><span>'+(PROG_EMOJI[g.cat]||"📌")+'</span><span><b>'+esc(g.title)+'</b>'+
+      (g.people.length?'':' <span class="muted">· '+esc(t("prog.every"))+'</span>')+
+      (dueTxt?'<span class="due'+(hot?" hot":"")+'">'+esc(dueTxt)+'</span>':'')+'</span>'+right+'</li>';
+  }).join("");
 }
 function renderPrefs(){
   const list=joined(), answered=list.filter(id=>D.prefs[id]);
@@ -1119,6 +1173,10 @@ document.addEventListener("click",e=>{
   const f=e.target.closest("#ideafilter .chip");
   if(f){ ideaFilter=f.dataset.f; $$("#ideafilter .chip").forEach(c=>c.setAttribute("aria-pressed",c===f)); renderIdeas(); return; }
   const seat=e.target.closest("[data-seat]"); if(seat){ openSeat(seat.dataset.seat); return; }
+  const tb=e.target.closest("[data-task]");
+  if(tb){ if(needMe())return; const id=tb.dataset.task, tk=Object.assign({},D.tasks[id]); if(!tk.title||tk.auto) return;
+    if(tk.who&&tk.who!==me) return;
+    tk.status=tk.done?"todo":"done"; tk.done=tk.status==="done"; put("tasks",id,tk); return; }
   const v=e.target.closest("[data-vote]");
   if(v){ if(needMe())return; const id=v.dataset.vote, it=Object.assign({},D.ideas[id]);
     const votes=Object.assign({},it.votes||{});

@@ -12,7 +12,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 export const MODEL = "claude-haiku-4-5";
 export const CONFIDENCE_FLOOR = 0.7;
 
-import { TRIP, MEMBER_NAMES, DAYS, TRIP_SPAN, GROUP_SIZE } from "./config.js";
+import { TRIP, MEMBER_NAMES, DAYS, TRIP_SPAN, GROUP_SIZE, REMIND, todayIn } from "./config.js";
 export const MEMBERS = MEMBER_NAMES;
 export const TRIP_DATES = DAYS;
 
@@ -20,8 +20,10 @@ const Currency = z.enum(["KRW", "TWD", "JPY", "HKD", "IDR", "USD"]);
 const IdeaKind = z.enum(["Food", "Cafe", "Sight", "Shop", "Night", "Other"]);
 const Area = z.enum(["Hongdae", "Myeongdong", "Gangnam", "Seongsu", "Ikseon", "Other"]);
 
+const TaskCat = z.enum(["flights", "visa", "stay", "data", "insurance", "plan", "money", "other"]);
+
 export const Intent = z.object({
-  intent: z.enum(["expense", "idea", "itinerary", "vote", "bind", "help", "ignore"]),
+  intent: z.enum(["expense", "idea", "itinerary", "vote", "bind", "help", "progress", "task", "ignore"]),
   confidence: z.number().min(0).max(1),
   expense: z.object({
     amount: z.number(),
@@ -48,6 +50,13 @@ export const Intent = z.object({
     board: z.enum(["ideas", "stays"]),
   }).nullable(),
   bind: z.object({ name: z.string() }).nullable(),
+  progress: z.object({ target_id: z.string() }).nullable(),
+  task: z.object({
+    title: z.string(),
+    due: z.string(),
+    category: TaskCat,
+    who: z.array(z.string()),
+  }).nullable(),
 });
 
 /** Today's date in the trip's time zone as YYYY-MM-DD. */
@@ -55,14 +64,17 @@ export function seoulToday(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TRIP.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
-function systemPrompt(candidates) {
+function systemPrompt(candidates, tasks = []) {
   const list = candidates.length
     ? candidates.map(c => `${c.id} | ${c.board} | ${c.title}`).join("\n")
     : "(none yet)";
+  const open = tasks.length
+    ? tasks.map(t => `${t.id} | ${t.title} | ${t.cat} | ${t.who || "everyone"} | ${t.due || "no date"}`).join("\n")
+    : "(none)";
   return [
     `You are the quiet collector bot in a LINE group chat for a ${GROUP_SIZE}-person trip to ${TRIP.city}, ${TRIP_SPAN}.`,
     `Members: ${MEMBERS.join(", ")}. Messages arrive in Chinese, Japanese, Korean, English or Indonesian.`,
-    `Today in ${TRIP.city}: ${seoulToday()}.`,
+    `Today in ${TRIP.city}: ${seoulToday()}. Today where the members live (${REMIND.timeZone}): ${todayIn(REMIND.timeZone)}.`,
     "",
     "Classify ONE message into exactly one intent:",
     "- expense: the sender says they paid for something (amount + what). Currency defaults to KRW when unstated; ₩/원 → KRW, NT$/台幣 → TWD, ¥/円 → JPY, HK$ → HKD, Rp → IDR. split_with lists member names explicitly mentioned as sharing the cost; empty array means everyone.",
@@ -71,6 +83,8 @@ function systemPrompt(candidates) {
     "- vote: the sender says they want to join / are in for a candidate that already exists in the list below. Use its id. If the place is mentioned but not in the list, that is an idea, not a vote.",
     `- bind: the sender states their own name ("I am ${MEMBER_NAMES[0]}", "我是 ${MEMBER_NAMES[0]}", "私は ${MEMBER_NAMES[0]}", "저는 ${MEMBER_NAMES[0]}", "saya ${MEMBER_NAMES[0]}"). Return the member name as written in the members list.`,
     "- help: the sender asks what the bot can do.",
+    "- progress: the sender reports that a pre-trip task from the open checklist below is finished — “booked my flight”, “visa submitted”, “we booked the airbnb”, “done with the form”, “機票訂好了”, “ビザ出した”. Pick the matching row's id as target_id. A row assigned to one person can only be reported by that person (the sender); a row for everyone can be reported by anyone. A question (“did everyone book?”), a plan to do it later (“I'll book tomorrow”) or a report about someone else's personal row is NOT progress → ignore.",
+    "- task: the sender asks the group to remember something WITH a date — “remind everyone to buy T-money by Oct 10”, “we need to decide the meeting point by Oct 8”, “10/8 前要決定集合點”. title: short English imperative (“Buy T-money”). due: YYYY-MM-DD, resolved from today's date (year " + String(new Date().getUTCFullYear()) + " unless stated). category: flights / visa / stay / data / insurance / plan / money / other. who: member names it is for, empty array = everyone. Without a date it is chatter → ignore.",
     "- ignore: everything else — chit-chat, reactions, questions to the group, jokes, replies, proposals phrased as questions, plans that are not settled, anything you are unsure about. When in doubt, ignore. Being silent is always safe; filing chatter is not.",
     "",
     "Set confidence honestly (0–1). Fill only the object that matches the intent; set the others to null.",
@@ -78,21 +92,24 @@ function systemPrompt(candidates) {
     "",
     "Current candidates (id | board | title):",
     list,
+    "",
+    "Open checklist rows (id | task | category | who | due):",
+    open,
   ].join("\n");
 }
 
 /**
  * @param env  Worker env with ANTHROPIC_API_KEY
- * @param opts { text, senderName, candidates: [{id, board, title}] }
+ * @param opts { text, senderName, candidates: [{id, board, title}], tasks: [{id, title, cat, who, due}] }
  * @returns parsed Intent, or null on any failure
  */
-export async function classify(env, { text, senderName, candidates }) {
+export async function classify(env, { text, senderName, candidates, tasks = [] }) {
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 20_000, maxRetries: 1 });
   try {
     const res = await client.messages.parse({
       model: MODEL,
       max_tokens: 1024,
-      system: systemPrompt(candidates),
+      system: systemPrompt(candidates, tasks),
       messages: [{ role: "user", content: `Sender: ${senderName || "unknown (not bound yet)"}\nMessage: ${text}` }],
       output_config: { format: zodOutputFormat(Intent) },
     });
@@ -211,4 +228,54 @@ export async function describeLink(env, { page, note, candidates }) {
     console.error("describeLink failed", String(err));
     return null;
   }
+}
+
+
+/* ── checklist titles: Chinese in Notion, English in the chat ── */
+
+const Translated = z.object({
+  items: z.array(z.object({ id: z.string(), title: z.string(), note: z.string() })),
+});
+
+const englishCache = new Map();     // original string → English
+const isAscii = s => /^[\x00-\x7F]*$/.test(s || "");
+
+/**
+ * English versions of checklist titles and notes, keyed by row id: { [id]: { title, note } }.
+ * Strings that are already ASCII pass through; the rest are translated once per Worker
+ * instance and cached. Any failure returns the originals — a Chinese reminder beats none.
+ */
+export async function englishFor(env, rows) {
+  const out = {};
+  const todo = [];
+  for (const r of rows) {
+    const title = isAscii(r.title) ? r.title : englishCache.get(r.title);
+    const note = !r.note || isAscii(r.note) ? r.note || "" : englishCache.get(r.note);
+    out[r.id] = { title: title ?? r.title, note: note ?? r.note ?? "" };
+    if (title == null || note == null) todo.push({ id: r.id, title: r.title, note: r.note || "" });
+  }
+  if (!todo.length || !env.ANTHROPIC_API_KEY) return out;
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 20_000, maxRetries: 1 });
+  try {
+    const res = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 1024,
+      system: [
+        `These are pre-trip checklist items for a ${GROUP_SIZE}-person trip to ${TRIP.city}. The group chat is in English.`,
+        "For each item return the same id, the title as a short English imperative (at most 6 words, e.g. “Book flights”, “Apply for the Korea visa”, “Decide the area”), and the note as one plain English sentence (empty string if the note is empty).",
+        "Keep names of Notion boards in English (Crew, Stays, Itinerary, Ideas). Do not add advice that is not in the original.",
+      ].join("\n"),
+      messages: [{ role: "user", content: JSON.stringify(todo) }],
+      output_config: { format: zodOutputFormat(Translated) },
+    });
+    for (const it of res.parsed_output?.items || []) {
+      const src = todo.find(t => t.id === it.id);
+      if (!src) continue;
+      if (it.title) { englishCache.set(src.title, it.title); out[it.id].title = it.title; }
+      if (src.note) { englishCache.set(src.note, it.note || src.note); out[it.id].note = it.note || src.note; }
+    }
+  } catch (err) {
+    console.error("englishFor failed", String(err));
+  }
+  return out;
 }

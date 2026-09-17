@@ -10,11 +10,16 @@ NOTION_IDEAS_DB     = "883484141f0c4f3c85e713cbbc6a51cb"
 NOTION_ITINERARY_DB = "31a197b2431b43d29e66018af9e01086"
 NOTION_EXPENSES_DB  = "e7220d9f26ef46008598a0e8583bcd0b"
 NOTION_STAYS_DB     = "d2986ee9b16b45c5b4db8938235fdfab"
+NOTION_CHECKLIST_DB = "70f44f67014a44e084feb8c116b7efd7"
+NOTION_CONFIG_DB    = "23b6501d3a7640d0ae2a7f8326055bd1"
 
-# Comma-separated LINE group IDs the bot is allowed to work in.
-# Empty = setup mode: typing `group id` in a group makes the bot reply with that group's ID.
-# Once set, it leaves any other group it is added to and never calls Claude for them.
-ALLOWED_GROUP_IDS = ""
+# Which LINE group the bot serves is NOT set here: the bot writes the group id into the
+# Notion "Bot config" board (key line_group_id) the first time it is invited into a group.
+# To move it, clear that value in Notion and invite the bot again.
+
+# Daily checklist reminder. Cron is UTC: 11:00 UTC = 18:00 Asia/Bangkok (see REMIND in src/config.js).
+[triggers]
+crons = ["0 11 * * *"]
 
 # Secrets are set by the deploy workflow (never write them here):
 #   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, NOTION_TOKEN, ANTHROPIC_API_KEY
