@@ -87,7 +87,7 @@ https://smcurlyqq.github.io/happy-birthday/korea/
 - 「let's try X」不管 X 認不認得都收；帶問號的時間提議（wanna / should we / 〜行かない？）不記行程。
 - 群裡打 `group id` 會回群組 ID 和「是否已登記」；`use this group` 在還沒登記時把這個群登記進 Bot config。卡片和回覆只連旅行網頁，不連 Notion。
 - 記帳、投票需要先綁定（I am 名字），否則 bot 會請他先綁。
-- **出發前任務追蹤（2026-09-17）**：每天曼谷 18:00（`wrangler.toml` 的 cron `0 11 * * *`，UTC）跑一次，讀 Checklist 表，截止前 3 天和當天各點名一次還沒完成的人，沒東西到期就不出聲，過期不再追。機票類看 Crew 的 Flights 欄有沒有填、行程類看 Itinerary 四天是否都有東西，資料證明完成就自動把狀態寫成 完成 Done。群裡說「booked my flight」「visa submitted」會標完成（只能標自己的列或全員列）；「remind everyone to X by Oct 10」會新增一列。打 `progress` 立刻看整張進度板，這也是上線後的測試路徑。中文標題和備註送出前會請 Claude 翻成英文短句（有快取），Claude 掛了就直接送中文。
+- **出發前任務追蹤（2026-09-17）**：每天曼谷 18:00（`wrangler.toml` 的 cron `0 11 * * *`，UTC）跑一次，讀 Checklist 表，截止前 3 天和當天各點名一次還沒完成的人，沒東西到期就不出聲，過期不再追。機票類看 Crew 的 Flights 欄有沒有填、行程類看 Itinerary 四天是否都有東西，資料證明完成就自動把狀態寫成 完成 Done。群裡說「booked my flight」「visa submitted」會標完成（只能標自己的列或全員列）；「remind everyone to X by Oct 10」會新增一列。打 `progress` 立刻看整張進度板，這也是上線後的測試路徑。有綁定（I am 名字）的人在提醒和進度板裡會被真的 @ 到（LINE textV2 mention），沒綁的只顯示名字。中文標題和備註送出前會請 Claude 翻成英文短句（有快取），Claude 掛了就直接送中文。
 
 **只服務一個群**：bot 第一次被邀進群，就把群組 ID 寫進 Notion Bot config 的 `line_group_id`。之後被拉進別的群會自動退出，也不會為別的群呼叫 Claude 或 Notion。還沒登記前（值空白）任何群都能用，方便測試；但定時提醒要有登記才會發。一對一私訊一律不理。`wrangler.toml` 已經沒有 `ALLOWED_GROUP_IDS`。
 

@@ -7,7 +7,7 @@
  */
 
 import * as db from "./notion.js";
-import { push, text } from "./line.js";
+import { push, mentionText, escapeBraces } from "./line.js";
 import { englishFor } from "./classify.js";
 import { DAYS, PAGE_URL, REMIND, todayIn } from "./config.js";
 
@@ -51,53 +51,73 @@ export function fmtDay(iso) {
   return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+const MAX_MENTIONS = 20;   // LINE's cap per message
+
+/**
+ * Collects @-mentions for one message. People who have linked their LINE account
+ * (Crew › LINE ID) become {u1}, {u2}… placeholders; everyone else is plain text.
+ * Beyond LINE's 20-mention cap the rest fall back to names.
+ */
+export class Mentions {
+  constructor() { this.map = {}; this.n = 0; }
+  person(m) {
+    if (!m?.lineId || this.n >= MAX_MENTIONS) return escapeBraces(m?.name || "?");
+    const key = `u${++this.n}`; this.map[key] = m.lineId; return `{${key}}`;
+  }
+}
+
 /** Rows with the same title collapse to one line listing everyone still outstanding. */
-function lines(rows, names) {
+function lines(rows, names, mentions) {
   const groups = new Map();
   for (const r of rows) {
     const key = r.title + "|" + r.due;
     const g = groups.get(key) || { title: names[r.id]?.title || r.title, note: "", cat: r.cat, due: r.due, people: [], group: false };
     if (!g.note) g.note = names[r.id]?.note || r.note || "";       // first row with a note wins
-    if (r.group) g.group = true; else g.people.push(r.who.name);
+    if (r.group) g.group = true; else g.people.push(r.who);
     groups.set(key, g);
   }
   return [...groups.values()].map(g => {
-    const who = g.group ? "everyone" : g.people.join(", ");
-    const note = g.note ? ` ${g.note}` : "";
-    return `${EMOJI[g.cat] || "📌"} ${g.title} (${fmtDay(g.due)}) — ${who}.${note}`;
+    const who = g.group ? "everyone" : g.people.map(m => mentions.person(m)).join(", ");
+    const note = g.note ? ` ${escapeBraces(g.note)}` : "";
+    return `${EMOJI[g.cat] || "📌"} ${escapeBraces(g.title)} (${fmtDay(g.due)}) — ${who}.${note}`;
   });
 }
 
-const FOOT = `Say “done” in here or tick it on the page → ${PAGE_URL}`;
+const FOOT = escapeBraces(`Say “done” in here or tick it on the page → ${PAGE_URL}`);
 
-/** The daily message, or null when there is nothing to say. */
+/**
+ * The daily message as { text, mentions }, or null when there is nothing to say.
+ * `text` may hold {u1}-style placeholders; pass both to mentionText().
+ */
 export function reminderText({ soon, today }, names = {}) {
   if (!soon.length && !today.length) return null;
+  const mentions = new Mentions();
   const out = [];
-  if (today.length) out.push("📋 Due today", ...lines(today, names));
+  if (today.length) out.push("📋 Due today", ...lines(today, names, mentions));
   if (soon.length) {
     if (out.length) out.push("");
-    out.push(`📋 ${REMIND.leadDays} days left`, ...lines(soon, names));
+    out.push(`📋 ${REMIND.leadDays} days left`, ...lines(soon, names, mentions));
   }
   out.push("", FOOT);
-  return out.join("\n");
+  return { text: out.join("\n"), mentions: mentions.map };
 }
 
-/** The full board for the `progress` command. */
+/** The full board for the `progress` command, as { text, mentions }. */
 export function progressText(rows, names = {}, today) {
+  const mentions = new Mentions();
   const open = rows.filter(r => !r.done && !r.mute).sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
   const done = rows.filter(r => r.done && !r.mute);
   const out = [`📋 Progress · ${fmtDay(today)}`];
   if (!open.length) out.push("Nothing left on the list 🎉");
-  for (const l of lines(open.filter(r => r.due), names)) out.push(l);
-  for (const r of open.filter(r => !r.due)) out.push(`${EMOJI[r.cat] || "📌"} ${names[r.id]?.title || r.title} — ${r.group ? "everyone" : r.who.name}.`);
+  for (const l of lines(open.filter(r => r.due), names, mentions)) out.push(l);
+  for (const r of open.filter(r => !r.due)) out.push(`${EMOJI[r.cat] || "📌"} ${escapeBraces(names[r.id]?.title || r.title)} — ${r.group ? "everyone" : mentions.person(r.who)}.`);
   if (done.length) {
     const byTitle = new Map();
-    for (const r of done) { const t = names[r.id]?.title || r.title; byTitle.set(t, [...(byTitle.get(t) || []), r.group ? null : r.who.name]); }
+    for (const r of done) { const t = escapeBraces(names[r.id]?.title || r.title); byTitle.set(t, [...(byTitle.get(t) || []), r.group ? null : escapeBraces(r.who.name)]); }
     out.push("", "✓ Done: " + [...byTitle].map(([t, ppl]) => ppl.some(p => p === null) ? t : `${t} — ${ppl.join(", ")}`).join(" · "));
   }
   out.push("", FOOT);
-  return out.join("\n");
+  return { text: out.join("\n"), mentions: mentions.map };
 }
 
 /* ── wired ──────────────────────────────────────────────────── */
@@ -128,14 +148,15 @@ export async function remind(env, now = new Date()) {
   if (!sel.soon.length && !sel.today.length) { console.log("remind: nothing due", today); return null; }
   const names = await boardNames(env, [...sel.soon, ...sel.today]);
   const msg = reminderText(sel, names);
-  await push(env, gid, [text(msg)]);
-  console.log("remind: sent", today, sel.soon.length, "soon,", sel.today.length, "today");
-  return msg;
+  await push(env, gid, [mentionText(msg.text, msg.mentions)]);
+  console.log("remind: sent", today, sel.soon.length, "soon,", sel.today.length, "today", Object.keys(msg.mentions).length, "mentions");
+  return msg.text;
 }
 
-/** Text for the `progress` command. */
+/** The LINE message for the `progress` command. */
 export async function progressBoard(env, now = new Date()) {
   const board = await loadBoard(env);
   const names = await boardNames(env, board);
-  return progressText(board, names, todayIn(REMIND.timeZone, now));
+  const msg = progressText(board, names, todayIn(REMIND.timeZone, now));
+  return mentionText(msg.text, msg.mentions);
 }

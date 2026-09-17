@@ -18,10 +18,10 @@
 
 import { classify, classifyImage, describeLink, CONFIDENCE_FLOOR, seoulToday } from "./classify.js";
 import * as db from "./notion.js";
-import { reply, leave, text, card, imageContent, HELP_MESSAGES, BIND_FIRST, KINDS, kindKey, PAGE_URL, MEMBER_LIST } from "./line.js";
+import { reply, leave, text, mentionText, escapeBraces, card, imageContent, HELP_MESSAGES, BIND_FIRST, KINDS, kindKey, PAGE_URL, MEMBER_LIST } from "./line.js";
 import { extractUrls, resolve, classifyLink, guessArea } from "./links.js";
 import { handleApi } from "./api.js";
-import { remind, progressBoard, loadBoard, boardNames, fmtDay as fmtDue } from "./checklist.js";
+import { remind, progressBoard, loadBoard, boardNames, fmtDay as fmtDue, Mentions } from "./checklist.js";
 
 /* ── worker entry ───────────────────────────────────────────── */
 export default {
@@ -97,7 +97,7 @@ async function onText(ev, env) {
     return reply(env, ev.replyToken, HELP_MESSAGES);
 
   if (/^(progress|status|進度|進捗|진행|진행 상황|kemajuan|checklist)$/i.test(msg))
-    return reply(env, ev.replyToken, [text(await progressBoard(env))]);
+    return reply(env, ev.replyToken, [await progressBoard(env)]);
 
   if (/^(unlink me|unbind|解除綁定|解綁|連携解除|연결 해제|lepas tautan)$/i.test(msg)) return onUnbind(ev, env);
 
@@ -268,8 +268,9 @@ async function onProgress(targetId, me, board, ev, env) {
   const siblings = board.filter(r => r.title === row.title && r.id !== row.id && !r.done && !r.group);
   const names = await boardNames(env, [row]);
   const title = names[row.id]?.title || row.title;
-  const tail = row.group ? "done" : `${me.name} done` + (siblings.length ? ` · still waiting on ${siblings.map(r => r.who.name).join(", ")}` : "");
-  return reply(env, ev.replyToken, [text(`✓ ${title} · ${tail}`)]);
+  const mentions = new Mentions();
+  const tail = row.group ? "done" : `${escapeBraces(me.name)} done` + (siblings.length ? ` · still waiting on ${siblings.map(r => mentions.person(r.who)).join(", ")}` : "");
+  return reply(env, ev.replyToken, [mentionText(`✓ ${escapeBraces(title)} · ${tail}`, mentions.map)]);
 }
 
 async function onTask(x, me, ev, env) {

@@ -73,6 +73,21 @@ export const BIND_FIRST = `Tell me who you are first — type “I am <your name
 
 export const text = t => ({ type: "text", text: t });
 
+/**
+ * A text message that @-mentions people. `text` holds {key} placeholders and
+ * `mentions` maps each key to a LINE userId (textV2 substitution). With no
+ * mentions it degrades to a plain text message. Literal braces in the text must
+ * already be escaped as {{ and }} — see escapeBraces().
+ */
+export function mentionText(t, mentions = {}) {
+  const keys = Object.keys(mentions);
+  if (!keys.length) return { type: "text", text: t.replace(/\{\{/g, "{").replace(/\}\}/g, "}") };
+  const substitution = {};
+  for (const k of keys) substitution[k] = { type: "mention", mentionee: { type: "user", userId: mentions[k] } };
+  return { type: "textV2", text: t, substitution };
+}
+export const escapeBraces = s => String(s ?? "").replace(/\{/g, "{{").replace(/\}/g, "}}");
+
 /** Download an image someone sent. The full rendition first (screenshots need legible text);
     LINE's small preview only as a fallback when the original is over Claude's 5 MB cap. */
 export async function imageContent(env, messageId) {

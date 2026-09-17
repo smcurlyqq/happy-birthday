@@ -84,6 +84,8 @@ Board 6 (`出發前任務 Checklist`) lists what has to happen before the trip. 
 
 When the data proves a row done, the bot writes 完成 Done back so Notion and the page agree. `靜音 Mute` hides a row from every reminder.
 
+People who have linked their LINE account (`I am <name>`) are @-mentioned in reminders and on the `progress` board; anyone unlinked appears as a plain name. LINE caps a message at 20 mentions, so beyond that the rest fall back to names.
+
 **Reminders** go out once a day at 18:00 Bangkok (the cron line in `wrangler.toml` is UTC): three days before a deadline and on the day itself, naming only the people who are still outstanding. Nothing due → nothing sent. Rows past their date are not repeated. Chinese titles and notes are turned into short English lines by Claude (cached); if that fails the original text is sent.
 
 ## Only your group

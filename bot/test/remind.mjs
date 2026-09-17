@@ -6,7 +6,11 @@
  * personal flight rows (Gigi, Nadia), Nadia's visa, and five group rows.
  */
 import assert from "node:assert/strict";
-import { evaluate, selectDue, reminderText, progressText, daysBetween } from "../src/checklist.js";
+import { evaluate, selectDue, reminderText as reminderMsg, progressText as progressMsg, daysBetween } from "../src/checklist.js";
+import { mentionText } from "../src/line.js";
+// Most checks read the text only; mentions are covered at the end.
+const reminderText = (...a) => reminderMsg(...a)?.text ?? null;
+const progressText = (...a) => progressMsg(...a).text;
 
 const crew = [
   { id: "c-gigi",  name: "Gigi",     flights: "" },
@@ -100,6 +104,23 @@ ok(reminderText(on("2026-10-09")).includes("行程定案"), "10-09: untranslated
   const crew2 = crew.map(m => m.name === "Gigi" ? { ...m, flights: "TG658" } : m);
   const txt2 = progressText(evaluate({ rows, crew: crew2, itineraryDates: new Set() }), names, "2026-09-17");
   ok(txt2.includes("✓ Done: Book flights — Gigi"), "done line names who finished");
+}
+
+/* @-mentions: linked people become placeholders, unlinked stay plain text */
+{
+  const crew3 = crew.map(m => m.name === "Gigi" ? { ...m, lineId: "Uaaaa" } : m);
+  const msg = reminderMsg(selectDue(evaluate({ rows, crew: crew3, itineraryDates: new Set() }), "2026-09-18"), names);
+  ok(msg.text.includes("— {u1}, Nadia."), "Gigi (linked) becomes {u1}, Nadia (unlinked) stays a name");
+  ok(msg.mentions.u1 === "Uaaaa", "placeholder maps to Gigi's LINE userId");
+  const m = mentionText(msg.text, msg.mentions);
+  ok(m.type === "textV2" && m.substitution.u1.mentionee.userId === "Uaaaa", "mentionText builds a textV2 substitution");
+  const plain = mentionText("no {{braces}} here", {});
+  ok(plain.type === "text" && plain.text === "no {braces} here", "without mentions the escaped braces are unescaped and a plain text message is sent");
+  const crewAll = crew.map((m, i) => ({ ...m, lineId: "U" + i }));
+  const board3 = evaluate({ rows, crew: crewAll, itineraryDates: new Set() });
+  const p = progressMsg(board3, names, "2026-09-17");
+  ok(Object.keys(p.mentions).length === 4, "progress board mentions Gigi, Nadia (flights), Amber (money) and Nadia (visa) — one per open personal row");
+  ok(!p.text.includes("{u5}"), "no stray placeholders");
 }
 
 console.log(`remind: ${checks} checks passed`);
