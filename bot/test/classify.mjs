@@ -34,9 +34,12 @@ const cases = [
   ["Nadia",    "aku ikut ke N Seoul Tower",                                "vote"],
   ["Akiha",    "廣藏市場行きたい！",                                        "vote"],
   ["Amber",    "聖水咖啡 +1",                                               "vote"],
-  // bind / help
+  // bind
   ["unknown",  "I am Gigi",                                                 "bind"],
-  ["unknown",  "what can you do?",                                          "help"],
+  // "let's …" chatter must never come back as help
+  ["Gigi",     "let's go",                                                  "ignore"],
+  ["Amber",    "let's eat first",                                           "ignore"],
+  ["Gigi",     "Akiha paid 80400 for dinner split with gigi",               "expense"],
   // chatter that must be ignored
   ["Gigi",     "lol that dinner was so good",                               "ignore"],
   ["Nadia",    "hahaha",                                                    "ignore"],

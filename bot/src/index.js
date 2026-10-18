@@ -3,7 +3,7 @@
  *
  * Links are filed deterministically (see links.js). Everything else goes
  * through Claude (classify.js), which decides whether the message is an
- * expense, an idea, an itinerary item, a vote, a bind, a help request —
+ * expense, an idea, an itinerary item, a vote, a bind —
  * or chatter, in which case the bot says nothing.
  *
  * The bot serves one LINE group: the first group it is invited into writes
@@ -131,7 +131,6 @@ async function onText(ev, env) {
 
   try {
     switch (out.intent) {
-      case "help":      return reply(env, ev.replyToken, HELP_MESSAGES);
       case "bind": {
         const m = await db.memberByName(env, out.bind?.name || "");
         return m ? onBind(m, ev, env) : reply(env, ev.replyToken, [text(`No member called “${out.bind?.name}”. Use one of: ${MEMBER_LIST}`)]);
@@ -221,16 +220,17 @@ async function onImage(ev, env) {
 /* ── AI-classified intents ──────────────────────────────────── */
 async function onExpense(x, me, ev, env) {
   if (!x) return;
-  if (!me) return reply(env, ev.replyToken, [text(BIND_FIRST)]);
   const all = await db.members(env);
+  const payer = (x.paid_by && all.find(m => m.name.toLowerCase() === x.paid_by.toLowerCase())) || me;
+  if (!payer) return reply(env, ev.replyToken, [text(BIND_FIRST)]);
   const named = x.split_with.map(n => all.find(m => m.name.toLowerCase() === n.toLowerCase())).filter(Boolean);
   const split = named.length ? named : all;
   await db.createExpense(env, {
     item: x.item, amount: x.amount, currency: x.currency, category: x.category,
-    date: seoulToday(), paidById: me.id, splitIds: split.map(m => m.id),
+    date: seoulToday(), paidById: payer.id, splitIds: split.map(m => m.id),
   });
   const who = named.length ? `split with ${named.map(m => m.name).join(", ")}` : `split ${all.length} ways`;
-  return reply(env, ev.replyToken, [text(`💸 ${fmtAmount(x.amount, x.currency)} · ${x.item} · paid by ${me.name} · ${who}`)]);
+  return reply(env, ev.replyToken, [text(`💸 ${fmtAmount(x.amount, x.currency)} · ${x.item} · paid by ${payer.name} · ${who}`)]);
 }
 
 async function onIdea(x, me, ev, env) {

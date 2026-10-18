@@ -23,13 +23,14 @@ const Area = z.enum(["Hongdae", "Myeongdong", "Gangnam", "Seongsu", "Ikseon", "O
 const TaskCat = z.enum(["flights", "visa", "stay", "data", "insurance", "plan", "money", "other"]);
 
 export const Intent = z.object({
-  intent: z.enum(["expense", "idea", "itinerary", "vote", "bind", "help", "progress", "task", "ignore"]),
+  intent: z.enum(["expense", "idea", "itinerary", "vote", "bind", "progress", "task", "ignore"]),
   confidence: z.number().min(0).max(1),
   expense: z.object({
     amount: z.number(),
     currency: Currency,
     item: z.string(),
     category: z.enum(["Food", "Transport", "Stay", "Tickets", "Shopping", "Other"]),
+    paid_by: z.string().nullable(),
     split_with: z.array(z.string()),
   }).nullable(),
   idea: z.object({
@@ -77,12 +78,11 @@ function systemPrompt(candidates, tasks = []) {
     `Today in ${TRIP.city}: ${seoulToday()}. Today where the members live (${REMIND.timeZone}): ${todayIn(REMIND.timeZone)}.`,
     "",
     "Classify ONE message into exactly one intent:",
-    "- expense: the sender says they paid for something (amount + what). Currency defaults to KRW when unstated; ₩/원 → KRW, NT$/台幣 → TWD, ¥/円 → JPY, HK$ → HKD, Rp → IDR. split_with lists member names explicitly mentioned as sharing the cost; empty array means everyone.",
+    "- expense: someone paid for something (amount + what) — the sender (“I paid…”) or a named member (“Akiha paid…”). paid_by: the member name as written in the members list when the message names who paid, null when the sender paid. Currency defaults to KRW when unstated; ₩/원 → KRW, NT$/台幣 → TWD, ¥/円 → JPY, HK$ → HKD, Rp → IDR. split_with lists member names explicitly mentioned as sharing the cost; empty array means everyone.",
     "- idea: the sender proposes a place or activity for the trip that is NOT already in the candidate list. Any explicit proposal counts — “let’s try X”, “let’s go to X”, “we should do X”, “想去 X”, “X 行きたい”, “X 가보자”, “ayo ke X” — even when X is a name you don’t recognise, a nickname, a placeholder, or a vague reference like “the cafe from that video”: file it anyway with the text as the title and kind Other if unsure. Title format: English name, then the Korean name in parentheses whenever you know or can infer it — “Gwangjang Market (광장시장)”, “Onion Seongsu (어니언 성수)”, “Bukchon Hanok Village (북촌한옥마을)”. The Korean is what people paste into Naver Map, so include it whenever the place has a Korean name; leave it out only for non-Korean names. Put any other detail in note. Do NOT ignore a proposal just because you can’t identify the place.",
     "- itinerary: the sender states a settled plan for a specific trip date (optionally a time / meeting point) — e.g. “Oct 18 2pm Gyeongbokgung, meet at exit 5”. `what` uses the same “English (Korean)” format as ideas — “Gyeongbokgung Palace (경복궁)”. A question or a tentative suggestion about timing (“wanna grab coffee on the 18th?”, “should we do Bukchon Sunday?”, “maybe…”) is NOT itinerary: it is still being discussed, so ignore it.",
     "- vote: the sender says they want to join / are in for a candidate that already exists in the list below. Use its id. If the place is mentioned but not in the list, that is an idea, not a vote.",
     `- bind: the sender states their own name ("I am ${MEMBER_NAMES[0]}", "我是 ${MEMBER_NAMES[0]}", "私は ${MEMBER_NAMES[0]}", "저는 ${MEMBER_NAMES[0]}", "saya ${MEMBER_NAMES[0]}"). Return the member name as written in the members list.`,
-    "- help: the sender asks what the bot can do.",
     "- progress: the sender reports that a pre-trip task from the open checklist below is finished — “booked my flight”, “visa submitted”, “we booked the airbnb”, “done with the form”, “機票訂好了”, “ビザ出した”. Pick the matching row's id as target_id. A row assigned to one person can only be reported by that person (the sender); a row for everyone can be reported by anyone. A question (“did everyone book?”), a plan to do it later (“I'll book tomorrow”) or a report about someone else's personal row is NOT progress → ignore.",
     "- task: the sender asks the group to remember something WITH a date — “remind everyone to buy T-money by Oct 10”, “we need to decide the meeting point by Oct 8”, “10/8 前要決定集合點”. title: short English imperative (“Buy T-money”). due: YYYY-MM-DD, resolved from today's date (year " + String(new Date().getUTCFullYear()) + " unless stated). category: flights / visa / stay / data / insurance / plan / money / other. who: member names it is for, empty array = everyone. Without a date it is chatter → ignore.",
     "- ignore: everything else — chit-chat, reactions, questions to the group, jokes, replies, proposals phrased as questions, plans that are not settled, anything you are unsure about. When in doubt, ignore. Being silent is always safe; filing chatter is not.",
