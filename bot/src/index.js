@@ -224,6 +224,8 @@ async function onExpense(x, me, ev, env) {
   const payer = (x.paid_by && all.find(m => m.name.toLowerCase() === x.paid_by.toLowerCase())) || me;
   if (!payer) return reply(env, ev.replyToken, [text(BIND_FIRST)]);
   const named = x.split_with.map(n => all.find(m => m.name.toLowerCase() === n.toLowerCase())).filter(Boolean);
+  // "split with Gigi" means the payer and Gigi — the payer always shares a named split.
+  if (named.length && !named.some(m => m.id === payer.id)) named.unshift(payer);
   const split = named.length ? named : all;
   await db.createExpense(env, {
     item: x.item, amount: x.amount, currency: x.currency, category: x.category,
